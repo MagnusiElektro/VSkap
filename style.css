@@ -5,8 +5,7 @@ html, body {
 
 #map {
   width: 100%;
-  aspect-ratio: 14900 / 10525;
-  margin: 0 auto;
+  height: 100%;
   display: block;
 }
 
