@@ -1,54 +1,87 @@
 [AI_BOOT_START]
 
-This file is a boot prompt for ChatGPT.
-Paste it into any new session to reload the full context of the project.
-Say "Save progress" any time the structure, code, or goals change — ChatGPT should regenerate this file.
+This file is a boot prompt for ChatGPT.  
+Paste it into a new session to reload the full context of the project.
 
-To use this file:
-1. Copy everything between [AI_BOOT_START] and [AI_BOOT_END] (including the tags).
-2. Paste it into a new ChatGPT session.
-3. ChatGPT will then understand your full project context.
-4. Say "Save progress" when changes are made to regenerate this file.
+Say **"Save progress"** any time structure, code, or goals change — ChatGPT will regenerate this file.
 
 ---
 
 PROJECT OVERVIEW:
 GitHub Pages-hosted interactive floor plan viewer using Leaflet.js.
-Each floor lives in `/floorplans/{folder}/` and contains:
-- `floorplan.png` – the map image
-- `bounds.json` – coordinate bounds
-- `annotations.json` – text and arrow annotations
 
-Maps are listed in `maps.json`.
-The viewer dynamically loads the image, positions it using bounds, and displays annotations.
+Each floorplan is represented as flat files in `/floorplans/`:
+- `{name}.png` – the map image
+- `{name}.bounds.json` – coordinate bounds
+- `{name}.annotations.json` – text and arrow annotations
 
-Users can zoom/pan. Future UI will allow right-click to add/edit annotations.
+A dropdown is populated from `maps.json` and lets users switch maps.  
+The viewer:
+- Loads the image via Leaflet image overlay
+- Applies bounds for correct zoom/pan
+- Loads annotations as markers with popup text
 
-Automation script (planned):
+Users can zoom and pan. A UI for right-click annotation editing is planned.
+
+---
+
+NAMING CONVENTION:
+User decided to use simplified base names like `"Nybygg_1"` (no subfolders).  
+Eventually, the dropdown will show display names like `"Nybygg 1 Etg."`  
+(by replacing `_` with a space and appending `"Etg."`).
+
+---
+
+AUTOMATION:
+- Script: `generateMaps.cjs`
 - Scans `/floorplans/`
-- Updates `maps.json`
-- Reads image size to create `bounds.json`
-- Creates empty `annotations.json` if missing
+- For every `{name}.png`, it:
+  - Creates `{name}.bounds.json` using image dimensions via `sharp`
+  - Creates `{name}.annotations.json` if missing (empty array)
+- Cleans up orphaned JSONs if the `.png` is missing
+- Updates `maps.json` to list all valid base names, sorted
+- Logs and skips unsupported image formats (not true `.png`)
+
+---
+
+GITHUB ACTION:
+File: `.github/workflows/update-maps.yml`
+
+Triggers on push if:
+- PNG or JSON files are changed in `floorplans/`
+- `generateMaps.cjs` or the workflow file is edited
+
+Steps:
+1. Checks out repo
+2. Installs Node.js and `sharp`
+3. Runs `generateMaps.cjs`
+4. Commits any changes to JSON files
+
+Permissions:
+- Uses `contents: write` to allow GitHub Actions to push commits
 
 ---
 
 FOLDER STRUCTURE:
 /floorplans/
-  /Nybygg 1.Etg/
-    floorplan.png
-    bounds.json
-    annotations.json
+  Nybygg_1.png
+  Nybygg_1.bounds.json
+  Nybygg_1.annotations.json
 /maps.json
 /index.html
 /script.js
 /style.css
+/generateMaps.cjs
+/package.json
+/.github/workflows/update-maps.yml
 /AI_README.md
 
 ---
 
 PROJECT FILES:
 
-> index.html:
+> `index.html`:
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -63,8 +96,10 @@ PROJECT FILES:
   <script src="script.js"></script>
 </body>
 </html>
+```
 
-> style.css:
+> `style.css`:
+```css
 html, body, #map {
   height: 100%;
   margin: 0;
@@ -76,8 +111,10 @@ select {
   z-index: 1000;
   padding: 4px;
 }
+```
 
-> script.js:
+> `script.js`:
+```js
 const map = L.map('map', {
   crs: L.CRS.Simple,
   minZoom: -2
@@ -85,7 +122,7 @@ const map = L.map('map', {
 
 let currentOverlay;
 let currentAnnotations = [];
-let bounds = [[0, 0], [1000, 1000]]; // default fallback
+let bounds = [[0, 0], [1000, 1000]]; // fallback
 
 fetch('maps.json')
   .then(res => res.json())
@@ -100,13 +137,13 @@ fetch('maps.json')
     document.body.appendChild(select);
 
     select.addEventListener('change', () => loadMap(select.value));
-    loadMap(folders[0]); // default to first one
+    loadMap(folders[0]); // load default
   });
 
-function loadMap(folder) {
-  const imageUrl = `floorplans/${folder}/floorplan.png`;
-  const boundsUrl = `floorplans/${folder}/bounds.json`;
-  const annotationsUrl = `floorplans/${folder}/annotations.json`;
+function loadMap(name) {
+  const imageUrl = `floorplans/${name}.png`;
+  const boundsUrl = `floorplans/${name}.bounds.json`;
+  const annotationsUrl = `floorplans/${name}.annotations.json`;
 
   if (currentOverlay) map.removeLayer(currentOverlay);
   currentAnnotations.forEach(a => map.removeLayer(a));
@@ -127,37 +164,72 @@ function loadMap(folder) {
     });
   });
 }
+```
 
-> maps.json:
-[
-  "Nybygg 1.Etg",
-  "BT2 2.Etg",
-  "Servicebygg"
-]
+> `generateMaps.cjs`:
+```js
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
 
-> bounds.json (example):
-[[0, 0], [2480, 3508]]
+const floorplansDir = path.join(__dirname, 'floorplans');
+const mapsFile = path.join(__dirname, 'maps.json');
 
-> annotations.json (example):
-[
-  {
-    "id": "cab-001",
-    "x": 540,
-    "y": 320,
-    "text": "Cabinet 001"
-  },
-  {
-    "id": "cab-002",
-    "x": 720,
-    "y": 180,
-    "text": "UPS"
+function getBaseName(file) {
+  return path.basename(file, '.png');
+}
+
+async function getImageDimensions(filePath) {
+  try {
+    const metadata = await sharp(filePath).metadata();
+    return [[0, 0], [metadata.width, metadata.height]];
+  } catch (err) {
+    console.warn(`⚠️ Skipping ${filePath} — unsupported format.`);
+    return null;
   }
-]
+}
 
----
+(async () => {
+  const files = fs.readdirSync(floorplansDir);
 
-GPT instructions:
-Paste this full `AI_README.md` into a new session to restore full project context.
-Say "Save progress" to update this file.
+  const pngs = files.filter(f => f.endsWith('.png'));
+  const baseNames = pngs.map(getBaseName);
+
+  // Clean up orphaned .json files
+  const jsons = files.filter(f => f.endsWith('.bounds.json') || f.endsWith('.annotations.json'));
+  for (const jsonFile of jsons) {
+    const base = jsonFile.replace(/\.(bounds|annotations)\.json$/, '');
+    if (!baseNames.includes(base)) {
+      console.log(`Deleting orphan JSON: ${jsonFile}`);
+      fs.unlinkSync(path.join(floorplansDir, jsonFile));
+    }
+  }
+
+  // Generate bounds and annotations
+  for (const base of baseNames) {
+    const pngPath = path.join(floorplansDir, `${base}.png`);
+    const boundsPath = path.join(floorplansDir, `${base}.bounds.json`);
+    const annotationsPath = path.join(floorplansDir, `${base}.annotations.json`);
+
+    if (!fs.existsSync(boundsPath)) {
+      const bounds = await getImageDimensions(pngPath);
+      if (bounds) {
+        fs.writeFileSync(boundsPath, JSON.stringify(bounds, null, 2));
+        console.log(`Created bounds for: ${base}`);
+      }
+    }
+
+    if (!fs.existsSync(annotationsPath)) {
+      fs.writeFileSync(annotationsPath, '[]');
+      console.log(`Created empty annotations for: ${base}`);
+    }
+  }
+
+  // Update maps.json
+  baseNames.sort();
+  fs.writeFileSync(mapsFile, JSON.stringify(baseNames, null, 2));
+  console.log('✅ Updated maps.json');
+})();
+```
 
 [AI_BOOT_END]
