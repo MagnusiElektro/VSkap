@@ -1,7 +1,15 @@
-html, body, #map {
+html, body {
   height: 100%;
   margin: 0;
 }
+
+#map {
+  width: 100%;
+  aspect-ratio: 14900 / 10525;
+  margin: 0 auto;
+  display: block;
+}
+
 select {
   position: absolute;
   top: 10px;
