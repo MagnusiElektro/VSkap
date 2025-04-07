@@ -1,0 +1,10 @@
+{
+  "name": "floorplan-generator",
+  "version": "1.0.0",
+  "description": "Automation script for floorplan viewer",
+  "main": "generateMaps.js",
+  "type": "module",
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}
