@@ -14,7 +14,11 @@ fetch('maps.json')
     folders.forEach(folder => {
       const option = document.createElement('option');
       option.value = folder;
-      option.textContent = folder;
+
+      // Format dropdown label: "Nybygg_1" → "Nybygg 1 Etg."
+      const label = folder.replace(/_/g, ' ') + ' Etg.';
+      option.textContent = label;
+
       select.appendChild(option);
     });
     document.body.appendChild(select);
