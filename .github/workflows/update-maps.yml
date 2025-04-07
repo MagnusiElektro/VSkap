@@ -9,6 +9,9 @@ on:
       - '.github/workflows/update-maps.yml'
       - 'generateMaps.js'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
