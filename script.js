@@ -39,7 +39,9 @@ function loadMap(name) {
   fetch(boundsUrl).then(res => res.json()).then(loadedBounds => {
     bounds = loadedBounds;
     currentOverlay = L.imageOverlay(imageUrl, bounds).addTo(map);
-    map.fitBounds(bounds);
+
+    map.fitBounds(bounds);      // Zoom to fit image
+    map.setMaxBounds(bounds);   // Prevent panning outside image
 
     fetch(annotationsUrl).then(res => res.json()).then(annotations => {
       annotations.forEach(a => {
