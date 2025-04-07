@@ -5,17 +5,18 @@ const sharp = require('sharp');
 const floorplansDir = path.join(__dirname, 'floorplans');
 const mapsFile = path.join(__dirname, 'maps.json');
 
-function getBaseName(file) {
-  return path.basename(file, '.png');
-}
-
+// Ensure width is horizontal and height is vertical
 async function getImageDimensions(filePath) {
   try {
     const metadata = await sharp(filePath).metadata();
-    return [[0, 0], [metadata.width, metadata.height]];
+
+    const width = metadata.width || 1000;
+    const height = metadata.height || 1000;
+
+    return [[0, 0], [width, height]];
   } catch (err) {
-    console.error(`Error reading image: ${filePath}`, err);
-    return [[0, 0], [1000, 1000]]; // fallback
+    console.warn(`⚠️ Skipping ${filePath} — unsupported format or read error.`);
+    return null;
   }
 }
 
@@ -23,14 +24,14 @@ async function getImageDimensions(filePath) {
   const files = fs.readdirSync(floorplansDir);
 
   const pngs = files.filter(f => f.endsWith('.png'));
-  const baseNames = pngs.map(getBaseName);
+  const baseNames = pngs.map(f => path.basename(f, '.png'));
 
   // Step 1: Clean up orphaned .json files
   const jsons = files.filter(f => f.endsWith('.bounds.json') || f.endsWith('.annotations.json'));
   for (const jsonFile of jsons) {
     const base = jsonFile.replace(/\.(bounds|annotations)\.json$/, '');
     if (!baseNames.includes(base)) {
-      console.log(`Deleting orphan JSON: ${jsonFile}`);
+      console.log(`🧹 Deleting orphan JSON: ${jsonFile}`);
       fs.unlinkSync(path.join(floorplansDir, jsonFile));
     }
   }
@@ -41,21 +42,24 @@ async function getImageDimensions(filePath) {
     const boundsPath = path.join(floorplansDir, `${base}.bounds.json`);
     const annotationsPath = path.join(floorplansDir, `${base}.annotations.json`);
 
+    // Create bounds.json
     if (!fs.existsSync(boundsPath)) {
       const bounds = await getImageDimensions(pngPath);
-      fs.writeFileSync(boundsPath, JSON.stringify(bounds, null, 2));
-      console.log(`Created bounds for: ${base}`);
+      if (bounds) {
+        fs.writeFileSync(boundsPath, JSON.stringify(bounds, null, 2));
+        console.log(`✅ Created bounds for: ${base}`);
+      }
     }
 
+    // Create annotations.json
     if (!fs.existsSync(annotationsPath)) {
       fs.writeFileSync(annotationsPath, '[]');
-      console.log(`Created empty annotations for: ${base}`);
+      console.log(`✅ Created empty annotations for: ${base}`);
     }
   }
 
-  // Step 3: Write maps.json
+  // Step 3: Update maps.json
   baseNames.sort();
   fs.writeFileSync(mapsFile, JSON.stringify(baseNames, null, 2));
   console.log('✅ Updated maps.json');
-
 })();
