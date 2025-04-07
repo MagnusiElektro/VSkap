@@ -26,7 +26,7 @@ jobs:
         run: npm install sharp
 
       - name: 🧠 Run generateMaps.js
-        run: node generateMaps.js
+        run: node generateMaps.cjs
 
       - name: 🚀 Commit and push changes
         run: |
