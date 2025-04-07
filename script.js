@@ -23,10 +23,10 @@ fetch('maps.json')
     loadMap(folders[0]); // default to first one
   });
 
-function loadMap(folder) {
-  const imageUrl = `floorplans/${folder}/floorplan.png`;
-  const boundsUrl = `floorplans/${folder}/bounds.json`;
-  const annotationsUrl = `floorplans/${folder}/annotations.json`;
+function loadMap(name) {
+  const imageUrl = `floorplans/${name}.png`;
+  const boundsUrl = `floorplans/${name}.bounds.json`;
+  const annotationsUrl = `floorplans/${name}.annotations.json`;
 
   if (currentOverlay) map.removeLayer(currentOverlay);
   currentAnnotations.forEach(a => map.removeLayer(a));
