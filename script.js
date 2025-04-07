@@ -3,25 +3,47 @@ const map = L.map('map', {
   minZoom: -2
 });
 
-const bounds = [[0, 0], [1000, 1000]]; // Adjust to match your image size
-const image = L.imageOverlay('floorplan.jpg', bounds).addTo(map);
+let currentOverlay;
+let currentAnnotations = [];
+let bounds = [[0, 0], [1000, 1000]]; // default fallback
 
-map.fitBounds(bounds);
-
-map.on('contextmenu', function(e) {
-  const id = prompt('Enter cabinet ID:');
-  if (!id) return;
-
-  fetch(`data.json`)
-    .then(response => response.json())
-    .then(data => {
-      const item = data.find(entry => entry.id === id);
-      if (!item) {
-        alert('ID not found in data.');
-        return;
-      }
-
-      const marker = L.marker(e.latlng).addTo(map);
-      marker.bindPopup(`<b>${item.id}</b><br>${item.info}`);
+fetch('maps.json')
+  .then(res => res.json())
+  .then(folders => {
+    const select = document.createElement('select');
+    folders.forEach(folder => {
+      const option = document.createElement('option');
+      option.value = folder;
+      option.textContent = folder;
+      select.appendChild(option);
     });
-});
+    document.body.appendChild(select);
+
+    select.addEventListener('change', () => loadMap(select.value));
+    loadMap(folders[0]); // default to first one
+  });
+
+function loadMap(folder) {
+  const imageUrl = `floorplans/${folder}/floorplan.png`;
+  const boundsUrl = `floorplans/${folder}/bounds.json`;
+  const annotationsUrl = `floorplans/${folder}/annotations.json`;
+
+  if (currentOverlay) map.removeLayer(currentOverlay);
+  currentAnnotations.forEach(a => map.removeLayer(a));
+  currentAnnotations = [];
+
+  fetch(boundsUrl).then(res => res.json()).then(loadedBounds => {
+    bounds = loadedBounds;
+    currentOverlay = L.imageOverlay(imageUrl, bounds).addTo(map);
+    map.fitBounds(bounds);
+
+    fetch(annotationsUrl).then(res => res.json()).then(annotations => {
+      annotations.forEach(a => {
+        const marker = L.marker([a.y, a.x])
+          .bindPopup(`<b>${a.text}</b>`)
+          .addTo(map);
+        currentAnnotations.push(marker);
+      });
+    });
+  });
+}
