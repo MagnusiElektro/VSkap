@@ -12,7 +12,7 @@ GitHub Pages-hosted interactive floor plan viewer using Leaflet.js.
 
 Each floorplan is represented as flat files in `/floorplans/`:
 - `{name}.png` – the map image
-- `{name}.bounds.json` – coordinate bounds
+- `{name}.bounds.json` – coordinate bounds (in Leaflet format)
 - `{name}.annotations.json` – text and arrow annotations
 
 A dropdown is populated from `maps.json` and lets users switch maps.  
@@ -36,9 +36,9 @@ AUTOMATION:
 - Scans `/floorplans/`
 - For every `{name}.png`, it:
   - Auto-corrects orientation using `.rotate()` via `sharp`
-  - Creates `{name}.bounds.json` using image dimensions
-  - Creates `{name}.annotations.json` if missing (empty array)
-- Cleans up orphaned JSONs if the `.png` is missing
+  - Extracts image dimensions and flips them to match Leaflet’s `[y, x]` format
+  - Creates `{name}.bounds.json` and `{name}.annotations.json` if missing
+- Cleans up orphaned JSONs if `.png` is removed
 - Updates `maps.json` to list all valid base names, sorted
 - Logs and skips unsupported image formats
 
@@ -64,9 +64,11 @@ Permissions:
 
 DISPLAY STRATEGY:
 - `#map` fills the screen using CSS (`width: 100%; height: 100%`)
-- Leaflet uses `fitBounds()` to scale the image to the viewport
-- `setMaxBounds()` prevents panning outside the image
-- No hardcoded `aspect-ratio` — scaling is handled by Leaflet
+- Leaflet:
+  - Uses `fitBounds(bounds)` to zoom to image edges
+  - Uses `setMaxBounds(bounds)` to prevent panning outside
+- Bounds are written in correct Leaflet format: `[[y1, x1], [y2, x2]]`
+- No hardcoded `aspect-ratio` needed
 
 ---
 
@@ -88,7 +90,24 @@ FOLDER STRUCTURE:
 
 KEY FILE UPDATES:
 
-> `script.js` (simplified `loadMap()` section):
+> `generateMaps.cjs` (correct bounds format):
+```js
+async function getImageDimensions(filePath) {
+  try {
+    const { width, height } = await sharp(filePath)
+      .rotate() // Auto-correct orientation
+      .metadata();
+
+    // Leaflet expects bounds as [[y1, x1], [y2, x2]]
+    return [[0, 0], [height || 1000, width || 1000]];
+  } catch (err) {
+    console.warn(`⚠️ Skipping ${filePath} — unsupported format or read error.`);
+    return null;
+  }
+}
+```
+
+> `script.js`:
 ```js
 map.fitBounds(bounds);
 map.setMaxBounds(bounds);
@@ -110,21 +129,6 @@ select {
   left: 10px;
   z-index: 1000;
   padding: 4px;
-}
-```
-
-> `generateMaps.cjs`:
-```js
-async function getImageDimensions(filePath) {
-  try {
-    const { width, height } = await sharp(filePath)
-      .rotate() // Auto-correct orientation
-      .metadata();
-    return [[0, 0], [width || 1000, height || 1000]];
-  } catch (err) {
-    console.warn(`⚠️ Skipping ${filePath} — unsupported format or read error.`);
-    return null;
-  }
 }
 ```
 
