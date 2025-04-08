@@ -15,7 +15,7 @@ fetch('maps.json')
       const option = document.createElement('option');
       option.value = folder;
 
-      // Format dropdown label: "Nybygg_1" → "Nybygg 1 Etg."
+      // Display "Nybygg_2" as "Nybygg 2 Etg."
       const label = folder.replace(/_/g, ' ') + ' Etg.';
       option.textContent = label;
 
@@ -24,32 +24,38 @@ fetch('maps.json')
     document.body.appendChild(select);
 
     select.addEventListener('change', () => loadMap(select.value));
-    loadMap(folders[0]); // default to first one
+    loadMap(folders[0]); // default to first map
   });
 
 function loadMap(name) {
-  const imageUrl = `floorplans/${name}.png`;
-  const boundsUrl = `floorplans/${name}.bounds.json`;
-  const annotationsUrl = `floorplans/${name}.annotations.json`;
+  const timestamp = Date.now(); // prevent caching
+
+  const imageUrl = `floorplans/${name}.png?v=${timestamp}`;
+  const boundsUrl = `floorplans/${name}.bounds.json?v=${timestamp}`;
+  const annotationsUrl = `floorplans/${name}.annotations.json?v=${timestamp}`;
 
   if (currentOverlay) map.removeLayer(currentOverlay);
   currentAnnotations.forEach(a => map.removeLayer(a));
   currentAnnotations = [];
 
-  fetch(boundsUrl).then(res => res.json()).then(loadedBounds => {
-    bounds = loadedBounds;
-    currentOverlay = L.imageOverlay(imageUrl, bounds).addTo(map);
+  fetch(boundsUrl)
+    .then(res => res.json())
+    .then(loadedBounds => {
+      bounds = loadedBounds;
+      currentOverlay = L.imageOverlay(imageUrl, bounds).addTo(map);
 
-    map.fitBounds(bounds);      // Zoom to fit image
-    map.setMaxBounds(bounds);   // Prevent panning outside image
+      map.fitBounds(bounds);
+      map.setMaxBounds(bounds);
 
-    fetch(annotationsUrl).then(res => res.json()).then(annotations => {
-      annotations.forEach(a => {
-        const marker = L.marker([a.y, a.x])
-          .bindPopup(`<b>${a.text}</b>`)
-          .addTo(map);
-        currentAnnotations.push(marker);
-      });
+      fetch(annotationsUrl)
+        .then(res => res.json())
+        .then(annotations => {
+          annotations.forEach(a => {
+            const marker = L.marker([a.y, a.x])
+              .bindPopup(`<b>${a.text}</b>`)
+              .addTo(map);
+            currentAnnotations.push(marker);
+          });
+        });
     });
-  });
 }
