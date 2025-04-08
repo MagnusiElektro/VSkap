@@ -7,7 +7,6 @@ let currentOverlay;
 let currentAnnotations = [];
 let bounds = [[0, 0], [1000, 1000]];
 
-// Room/type lists
 const ROOM_LIST = ["101 Datarom", "203 Serverrom", "303 Kantine"];
 const TYPE_LIST = ["Underfordeling", "Nettverksfordeling", "Styreskap"];
 
@@ -68,25 +67,50 @@ function addCabinet({ id, x, y, room, type }) {
 
 function onMapClick(e) {
   const { lat, lng } = e.latlng;
-
   const form = document.createElement('form');
 
-  form.innerHTML = `
-    <label for="id">ID:</label>
-    <input name="id" id="id" required />
+  // Create ID field
+  const idLabel = document.createElement('label');
+  idLabel.textContent = 'ID:';
+  const idInput = document.createElement('input');
+  idInput.name = 'id';
+  idInput.required = true;
 
-    <label for="room">Room:</label>
-    <select name="room" id="room">
-      ${ROOM_LIST.map(r => `<option>${r}</option>`).join('')}
-    </select>
+  // Create Room field
+  const roomLabel = document.createElement('label');
+  roomLabel.textContent = 'Room:';
+  const roomSelect = document.createElement('select');
+  roomSelect.name = 'room';
+  ROOM_LIST.forEach(room => {
+    const option = document.createElement('option');
+    option.textContent = room;
+    roomSelect.appendChild(option);
+  });
 
-    <label for="type">Type:</label>
-    <select name="type" id="type">
-      ${TYPE_LIST.map(t => `<option>${t}</option>`).join('')}
-    </select>
+  // Create Type field
+  const typeLabel = document.createElement('label');
+  typeLabel.textContent = 'Type:';
+  const typeSelect = document.createElement('select');
+  typeSelect.name = 'type';
+  TYPE_LIST.forEach(type => {
+    const option = document.createElement('option');
+    option.textContent = type;
+    typeSelect.appendChild(option);
+  });
 
-    <button type="submit">Add</button>
-  `;
+  // Create submit button
+  const submit = document.createElement('button');
+  submit.textContent = 'Add';
+  submit.type = 'submit';
+
+  // Add everything to form
+  form.appendChild(idLabel);
+  form.appendChild(idInput);
+  form.appendChild(roomLabel);
+  form.appendChild(roomSelect);
+  form.appendChild(typeLabel);
+  form.appendChild(typeSelect);
+  form.appendChild(submit);
 
   const popup = L.popup()
     .setLatLng(e.latlng)
