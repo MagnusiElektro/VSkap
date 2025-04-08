@@ -1,36 +1,20 @@
-html, body {
-  height: 100%;
-  margin: 0;
+.leaflet-popup-content form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 200px;
 }
 
-#map {
-  width: 100%;
-  height: 100%;
-}
-
-/* Dropdown (floorplan selector) */
-select {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 9999;
-  padding: 6px;
-  font-size: 1em;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-/* Cabinet form styles */
-select, input, label, button {
-  font-size: 1em;
-}
-
-form label {
-  display: block;
+.leaflet-popup-content label {
+  font-weight: bold;
   margin-top: 4px;
 }
 
-form button {
-  margin-top: 8px;
+.leaflet-popup-content input,
+.leaflet-popup-content select,
+.leaflet-popup-content button {
+  font-size: 1em;
+  padding: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
