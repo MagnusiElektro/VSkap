@@ -7,7 +7,7 @@ let currentOverlay;
 let currentAnnotations = [];
 let bounds = [[0, 0], [1000, 1000]];
 
-// Room/type lists (test data for now)
+// Room/type lists
 const ROOM_LIST = ["101 Datarom", "203 Serverrom", "303 Kantine"];
 const TYPE_LIST = ["Underfordeling", "Nettverksfordeling", "Styreskap"];
 
@@ -24,12 +24,11 @@ fetch('maps.json')
     document.body.appendChild(select);
 
     select.addEventListener('change', () => loadMap(select.value));
-    loadMap(folders[0]); // default to first map
+    loadMap(folders[0]);
   });
 
 function loadMap(name) {
-  const timestamp = Date.now(); // prevent caching
-
+  const timestamp = Date.now();
   const imageUrl = `floorplans/${name}.png?v=${timestamp}`;
   const boundsUrl = `floorplans/${name}.bounds.json?v=${timestamp}`;
   const annotationsUrl = `floorplans/${name}.annotations.json?v=${timestamp}`;
@@ -37,6 +36,7 @@ function loadMap(name) {
   if (currentOverlay) map.removeLayer(currentOverlay);
   currentAnnotations.forEach(a => map.removeLayer(a));
   currentAnnotations = [];
+  map.off('click');
 
   fetch(boundsUrl)
     .then(res => res.json())
@@ -52,11 +52,8 @@ function loadMap(name) {
           annotations.forEach(cab => addCabinet(cab));
         });
 
-      // Attach click handler only if editing is allowed
       if (typeof allowEditing !== 'undefined' && allowEditing) {
         map.on('click', onMapClick);
-      } else {
-        map.off('click');
       }
     });
 }
@@ -73,10 +70,21 @@ function onMapClick(e) {
   const { lat, lng } = e.latlng;
 
   const form = document.createElement('form');
+
   form.innerHTML = `
-    <label>ID:<br><input name="id" required /></label><br>
-    <label>Room:<br><select name="room">${ROOM_LIST.map(r => `<option>${r}</option>`).join('')}</select></label><br>
-    <label>Type:<br><select name="type">${TYPE_LIST.map(t => `<option>${t}</option>`).join('')}</select></label><br>
+    <label for="id">ID:</label>
+    <input name="id" id="id" required />
+
+    <label for="room">Room:</label>
+    <select name="room" id="room">
+      ${ROOM_LIST.map(r => `<option>${r}</option>`).join('')}
+    </select>
+
+    <label for="type">Type:</label>
+    <select name="type" id="type">
+      ${TYPE_LIST.map(t => `<option>${t}</option>`).join('')}
+    </select>
+
     <button type="submit">Add</button>
   `;
 
